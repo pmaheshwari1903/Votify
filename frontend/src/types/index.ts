@@ -1,5 +1,4 @@
 // Votify Frontend Domain Type Definitions
-// Defines core entities and API schemas aligned with microservice contracts.
 
 export interface User {
   id: string;
@@ -15,50 +14,30 @@ export interface PollOption {
   voteCount: number;
 }
 
-export interface PollSettings {
-  isAnonymous: boolean;
-  allowMultipleVotes: boolean;
-  requireAuth: boolean;
-  expiresAt?: string;
-}
-
 export interface Poll {
   id: string;
-  title: string;
+  ownerId?: string;
+  question?: string;
+  title?: string;
   description?: string;
-  creatorId: string;
   options: PollOption[];
-  settings: PollSettings;
-  isActive: boolean;
+  status: 'draft' | 'open' | 'closed';
   totalVotes: number;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
 }
 
-export interface Vote {
+export interface PollResults {
   pollId: string;
-  optionId: string;
-  voterIp?: string;
-  userId?: string;
-  timestamp: string;
-}
-
-export interface PollAnalytics {
-  pollId: string;
+  question: string;
+  status: 'draft' | 'open' | 'closed';
   totalVotes: number;
-  votesByOption: Record<string, number>;
-  votesOverTime: Array<{ timestamp: string; count: number }>;
-  uniqueVoters: number;
+  options: PollOption[];
 }
 
-export interface SubscriptionPlan {
-  id: string;
-  name: string;
-  priceMonthly: number;
-  maxPolls: number;
-  maxVotesPerPoll: number;
-  customBranding: boolean;
-  analyticsLevel: 'basic' | 'advanced' | 'enterprise';
+export interface AuthResponse {
+  token: string;
+  user: User;
 }
 
 export interface ApiResponse<T> {
@@ -68,9 +47,5 @@ export interface ApiResponse<T> {
     code: string;
     message: string;
     details?: Record<string, string>;
-  };
-  meta?: {
-    timestamp: string;
-    requestId?: string;
   };
 }
