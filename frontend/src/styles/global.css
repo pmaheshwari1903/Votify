@@ -1,0 +1,135 @@
+/* ============================================
+   Votify Global Styles
+   ============================================ */
+
+@import './reset.css';
+@import './tokens.css';
+
+body {
+  font-family: var(--v-font-body);
+  font-size: var(--v-text-base);
+  font-weight: var(--v-weight-regular);
+  color: var(--v-color-text);
+  background-color: var(--v-color-bg);
+  line-height: var(--v-leading-normal);
+  letter-spacing: var(--v-tracking-normal);
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Typography Utilities ────────────────── */
+
+.heading-1 {
+  font-family: var(--v-font-heading);
+  font-size: var(--v-text-5xl);
+  font-weight: var(--v-weight-extrabold);
+  color: var(--v-color-text-heading);
+  letter-spacing: var(--v-tracking-tight);
+  line-height: var(--v-leading-tight);
+}
+
+.heading-2 {
+  font-family: var(--v-font-heading);
+  font-size: var(--v-text-4xl);
+  font-weight: var(--v-weight-bold);
+  color: var(--v-color-text-heading);
+  letter-spacing: var(--v-tracking-tight);
+  line-height: var(--v-leading-tight);
+}
+
+.heading-3 {
+  font-family: var(--v-font-heading);
+  font-size: var(--v-text-2xl);
+  font-weight: var(--v-weight-semibold);
+  color: var(--v-color-text-heading);
+  line-height: var(--v-leading-snug);
+}
+
+.heading-4 {
+  font-family: var(--v-font-heading);
+  font-size: var(--v-text-xl);
+  font-weight: var(--v-weight-semibold);
+  color: var(--v-color-text-heading);
+  line-height: var(--v-leading-snug);
+}
+
+.body-large {
+  font-size: var(--v-text-lg);
+  line-height: var(--v-leading-relaxed);
+  color: var(--v-color-text-secondary);
+}
+
+.body-small {
+  font-size: var(--v-text-sm);
+  color: var(--v-color-text-secondary);
+}
+
+.caption {
+  font-size: var(--v-text-xs);
+  font-weight: var(--v-weight-medium);
+  letter-spacing: var(--v-tracking-wider);
+  text-transform: uppercase;
+  color: var(--v-color-text-tertiary);
+}
+
+/* ── Layout Utilities ────────────────────── */
+
+.container {
+  width: 100%;
+  max-width: var(--v-max-width);
+  margin-inline: auto;
+  padding-inline: var(--v-space-6);
+}
+
+.container--narrow {
+  max-width: var(--v-max-width-narrow);
+}
+
+.container--wide {
+  max-width: var(--v-max-width-wide);
+}
+
+/* ── Accent Line ─────────────────────────── 
+   A distinctive vermilion rule, inspired by 
+   Japanese editorial design's use of red lines 
+   for visual hierarchy.
+   ──────────────────────────────────────── */
+
+.accent-rule {
+  width: 48px;
+  height: 3px;
+  background-color: var(--v-color-accent);
+  border: none;
+  border-radius: var(--v-radius-full);
+}
+
+/* ── Selection ───────────────────────────── */
+
+::selection {
+  background-color: var(--v-color-vermilion-100);
+  color: var(--v-color-vermilion-900);
+}
+
+/* ── Scrollbar ───────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--v-color-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--v-color-ink-300);
+  border-radius: var(--v-radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--v-color-ink-400);
+}

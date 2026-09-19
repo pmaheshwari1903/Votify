@@ -1,0 +1,52 @@
+# Votify — Binaries & Build
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+bin/
+dist/
+build/
+
+# Go
+vendor/
+*.mod.bak
+
+# Node / Frontend
+node_modules/
+frontend/dist/
+frontend/.vite/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# OS
+desktop.ini
+ehthumbs.db
+
+# Logs
+*.log
+logs/
+
+# Coverage
+coverage/
+*.cover
+*.coverprofile
+
+# Temporary
+tmp/
+temp/

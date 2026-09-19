@@ -1,0 +1,166 @@
+/* ============================================
+   Votify Design Tokens
+   Japanese Editorial-Inspired Design System
+   ============================================
+   
+   Naming convention:
+   --v-{category}-{variant}
+   
+   Categories: color, font, size, space, radius, shadow, transition, z
+   ============================================ */
+
+:root {
+  /* ── Color Primitives ──────────────────────
+     Inspired by Japanese traditional colors:
+     - Shu (朱) — Vermilion red
+     - Sumi (墨) — Ink black
+     - Washi — Rice paper white
+     - Sakura — Cherry blossom pink
+     ──────────────────────────────────────── */
+
+  /* Vermilion — Primary accent */
+  --v-color-vermilion-50: #FEF2F1;
+  --v-color-vermilion-100: #FDE3E0;
+  --v-color-vermilion-200: #FBCBC6;
+  --v-color-vermilion-300: #F6A69D;
+  --v-color-vermilion-400: #EE7468;
+  --v-color-vermilion-500: #D94032;
+  --v-color-vermilion-600: #C4342D;
+  --v-color-vermilion-700: #A52920;
+  --v-color-vermilion-800: #88251E;
+  --v-color-vermilion-900: #71241F;
+
+  /* Ink — Neutrals */
+  --v-color-ink-50: #F8F7F6;
+  --v-color-ink-100: #F0EEEC;
+  --v-color-ink-200: #E0DCDA;
+  --v-color-ink-300: #CBC5C1;
+  --v-color-ink-400: #A39C96;
+  --v-color-ink-500: #7A7470;
+  --v-color-ink-600: #5C5754;
+  --v-color-ink-700: #433F3D;
+  --v-color-ink-800: #2A2826;
+  --v-color-ink-900: #1A1A1A;
+  --v-color-ink-950: #0D0D0D;
+
+  /* Washi — Background tones */
+  --v-color-washi: #FAF7F2;
+  --v-color-washi-warm: #F5F0E8;
+  --v-color-washi-cool: #F7F7F5;
+
+  /* Sakura — Soft accent */
+  --v-color-sakura-100: #FDF0F0;
+  --v-color-sakura-200: #F0C4C4;
+  --v-color-sakura-300: #E5A0A0;
+
+  /* Semantic Colors */
+  --v-color-success: #2D7A4F;
+  --v-color-success-light: #E8F5ED;
+  --v-color-warning: #C48A2D;
+  --v-color-warning-light: #FFF8EB;
+  --v-color-error: #C4342D;
+  --v-color-error-light: #FEF2F1;
+  --v-color-info: #2D6BC4;
+  --v-color-info-light: #EFF5FF;
+
+  /* ── Semantic Aliases ──────────────────── */
+  --v-color-bg: var(--v-color-washi);
+  --v-color-bg-elevated: #FFFFFF;
+  --v-color-bg-sunken: var(--v-color-washi-warm);
+  --v-color-text: var(--v-color-ink-900);
+  --v-color-text-heading: var(--v-color-ink-950);
+  --v-color-text-secondary: var(--v-color-ink-500);
+  --v-color-text-tertiary: var(--v-color-ink-400);
+  --v-color-text-inverse: #FFFFFF;
+  --v-color-accent: var(--v-color-vermilion-500);
+  --v-color-accent-hover: var(--v-color-vermilion-600);
+  --v-color-accent-light: var(--v-color-vermilion-50);
+  --v-color-border: var(--v-color-ink-200);
+  --v-color-border-light: var(--v-color-ink-100);
+  --v-color-border-focus: var(--v-color-vermilion-400);
+
+  /* ── Typography ────────────────────────── */
+  --v-font-heading: 'Outfit', system-ui, sans-serif;
+  --v-font-body: 'Inter', system-ui, sans-serif;
+  --v-font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Font Sizes — modular scale (1.25 ratio) */
+  --v-text-xs: 0.75rem;    /* 12px */
+  --v-text-sm: 0.875rem;   /* 14px */
+  --v-text-base: 1rem;     /* 16px */
+  --v-text-lg: 1.125rem;   /* 18px */
+  --v-text-xl: 1.25rem;    /* 20px */
+  --v-text-2xl: 1.5rem;    /* 24px */
+  --v-text-3xl: 1.875rem;  /* 30px */
+  --v-text-4xl: 2.25rem;   /* 36px */
+  --v-text-5xl: 3rem;      /* 48px */
+  --v-text-6xl: 3.75rem;   /* 60px */
+
+  /* Font Weights */
+  --v-weight-regular: 400;
+  --v-weight-medium: 500;
+  --v-weight-semibold: 600;
+  --v-weight-bold: 700;
+  --v-weight-extrabold: 800;
+
+  /* Line Heights */
+  --v-leading-tight: 1.2;
+  --v-leading-snug: 1.35;
+  --v-leading-normal: 1.5;
+  --v-leading-relaxed: 1.65;
+
+  /* Letter Spacing */
+  --v-tracking-tight: -0.025em;
+  --v-tracking-normal: 0;
+  --v-tracking-wide: 0.025em;
+  --v-tracking-wider: 0.05em;
+
+  /* ── Spacing (4px base unit) ───────────── */
+  --v-space-0: 0;
+  --v-space-1: 0.25rem;  /* 4px */
+  --v-space-2: 0.5rem;   /* 8px */
+  --v-space-3: 0.75rem;  /* 12px */
+  --v-space-4: 1rem;     /* 16px */
+  --v-space-5: 1.25rem;  /* 20px */
+  --v-space-6: 1.5rem;   /* 24px */
+  --v-space-8: 2rem;     /* 32px */
+  --v-space-10: 2.5rem;  /* 40px */
+  --v-space-12: 3rem;    /* 48px */
+  --v-space-16: 4rem;    /* 64px */
+  --v-space-20: 5rem;    /* 80px */
+  --v-space-24: 6rem;    /* 96px */
+  --v-space-32: 8rem;    /* 128px */
+
+  /* ── Border Radius ─────────────────────── */
+  --v-radius-sm: 4px;
+  --v-radius-md: 8px;
+  --v-radius-lg: 12px;
+  --v-radius-xl: 16px;
+  --v-radius-2xl: 24px;
+  --v-radius-full: 9999px;
+
+  /* ── Shadows ───────────────────────────── */
+  --v-shadow-xs: 0 1px 2px rgba(13, 13, 13, 0.04);
+  --v-shadow-sm: 0 1px 3px rgba(13, 13, 13, 0.06), 0 1px 2px rgba(13, 13, 13, 0.04);
+  --v-shadow-md: 0 4px 6px -1px rgba(13, 13, 13, 0.06), 0 2px 4px -2px rgba(13, 13, 13, 0.04);
+  --v-shadow-lg: 0 10px 15px -3px rgba(13, 13, 13, 0.06), 0 4px 6px -4px rgba(13, 13, 13, 0.04);
+  --v-shadow-xl: 0 20px 25px -5px rgba(13, 13, 13, 0.08), 0 8px 10px -6px rgba(13, 13, 13, 0.04);
+
+  /* ── Transitions ───────────────────────── */
+  --v-transition-fast: 120ms ease-out;
+  --v-transition-normal: 200ms ease-out;
+  --v-transition-slow: 350ms ease-out;
+  --v-transition-spring: 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ── Z-Index Scale ─────────────────────── */
+  --v-z-dropdown: 100;
+  --v-z-sticky: 200;
+  --v-z-overlay: 300;
+  --v-z-modal: 400;
+  --v-z-toast: 500;
+
+  /* ── Layout ────────────────────────────── */
+  --v-max-width: 1200px;
+  --v-max-width-narrow: 800px;
+  --v-max-width-wide: 1400px;
+}
