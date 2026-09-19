@@ -18,6 +18,7 @@ export interface Poll {
   id: string;
   ownerId?: string;
   question: string;
+  title?: string;
   description?: string;
   options: PollOption[];
   status: 'draft' | 'open' | 'closed';
