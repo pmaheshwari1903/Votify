@@ -217,37 +217,45 @@ export const PublicVoteView: React.FC<PublicVoteViewProps> = ({
               </Button>
             </div>
           </div>
+        ) : !user ? (
+          <div style={{
+            padding: '28px 20px',
+            backgroundColor: 'var(--v-color-washi-light)',
+            borderRadius: 'var(--v-radius-md)',
+            textAlign: 'center',
+            marginBottom: '24px'
+          }}>
+            <div style={{
+              width: '48px',
+              height: '48px',
+              borderRadius: '50%',
+              backgroundColor: 'rgba(196, 52, 45, 0.10)',
+              color: 'var(--v-color-vermilion)',
+              fontSize: '22px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 14px auto'
+            }}>
+              🔒
+            </div>
+            <p style={{ color: 'var(--v-color-deep-ink)', fontWeight: 600, fontSize: '16px', marginBottom: '6px' }}>
+              Sign in required to vote
+            </p>
+            <p style={{ color: 'var(--v-color-warm-gray)', fontSize: '14px', marginBottom: '20px' }}>
+              You need to sign in with your Maheshwari.com account to cast your vote on this poll.
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <Button variant="primary" size="lg" onClick={handleSignIn}>
+                Sign in with Maheshwari.com
+              </Button>
+              <Button variant="outline" size="lg" onClick={() => onNavigateResults(poll!.id)}>
+                View Results
+              </Button>
+            </div>
+          </div>
         ) : (
           <div>
-            {!user && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '10px 14px',
-                backgroundColor: 'var(--v-color-washi-light)',
-                borderRadius: 'var(--v-radius-md)',
-                marginBottom: '20px',
-                fontSize: '13px',
-                color: 'var(--v-color-warm-gray)'
-              }}>
-                <span>Voting as a public guest.</span>
-                <button
-                  type="button"
-                  onClick={handleSignIn}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--v-color-vermilion)',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                >
-                  Optional: Sign in with Maheshwari.com
-                </button>
-              </div>
-            )}
-
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '28px' }}>
               {poll?.options.map((opt: PollOption) => {
                 const isSelected = selectedOptionId === opt.id;
@@ -308,3 +316,4 @@ export const PublicVoteView: React.FC<PublicVoteViewProps> = ({
     </div>
   );
 };
+

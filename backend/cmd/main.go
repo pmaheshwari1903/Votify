@@ -85,7 +85,6 @@ func main() {
 
 	// Middleware guards
 	reqAuth := middleware.AuthGuard(cfg.JWTSecret)
-	optAuth := middleware.OptionalAuth(cfg.JWTSecret)
 
 	// API v1 Routes
 	v1 := router.Group("/api/v1")
@@ -114,8 +113,8 @@ func main() {
 		v1.POST("/polls/:id/open", reqAuth, pollHandler.Open)
 		v1.POST("/polls/:id/close", reqAuth, pollHandler.Close)
 
-		// Vote routes (OptionalAuth allows both authenticated users & public unauthenticated voters)
-		v1.POST("/votes", optAuth, voteHandler.CastVote)
+		// Vote routes (only authenticated users can vote)
+		v1.POST("/votes", reqAuth, voteHandler.CastVote)
 	}
 
 	// Realtime WebSocket endpoint

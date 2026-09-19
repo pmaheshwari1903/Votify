@@ -2,8 +2,6 @@ package votes
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"strings"
 	"time"
@@ -19,7 +17,7 @@ type VoteRepo interface {
 }
 
 type VoteService interface {
-	CastVote(ctx context.Context, userID, anonVoterID, clientIP string, req CastVoteRequest) (*VoteResponse, error)
+	CastVote(ctx context.Context, userID string, req CastVoteRequest) (*VoteResponse, error)
 }
 
 type DefaultVoteService struct {
@@ -42,7 +40,7 @@ func NewVoteService(
 
 func (s *DefaultVoteService) CastVote(
 	ctx context.Context,
-	userID, anonVoterID, clientIP string,
+	userID string,
 	req CastVoteRequest,
 ) (*VoteResponse, error) {
 	pollID := strings.TrimSpace(req.PollID)
@@ -50,6 +48,10 @@ func (s *DefaultVoteService) CastVote(
 
 	if pollID == "" || optionID == "" {
 		return nil, errors.NewBadRequestError("pollId and optionId are required", "MISSING_REQUIRED_FIELDS")
+	}
+
+	if userID == "" {
+		return nil, errors.NewUnauthorizedError("You must be signed in to vote")
 	}
 
 	pubPoll, err := s.pollService.GetPublicPoll(ctx, pollID)
@@ -73,17 +75,7 @@ func (s *DefaultVoteService) CastVote(
 		return nil, errors.NewBadRequestError(fmt.Sprintf("Option '%s' does not exist in poll '%s'", optionID, pollID), "INVALID_OPTION_ID")
 	}
 
-	voterIdentity := userID
-	if voterIdentity == "" {
-		if anonVoterID != "" {
-			voterIdentity = anonVoterID
-		} else {
-			h := sha256.Sum256([]byte(clientIP))
-			voterIdentity = "anon_ip_" + hex.EncodeToString(h[:12])
-		}
-	}
-
-	alreadyVoted, err := s.voteRepo.HasVoted(ctx, pollID, voterIdentity)
+	alreadyVoted, err := s.voteRepo.HasVoted(ctx, pollID, userID)
 	if err != nil {
 		return nil, errors.NewInternalError(err)
 	}
@@ -94,8 +86,8 @@ func (s *DefaultVoteService) CastVote(
 	vote := &Vote{
 		PollID:        pollID,
 		OptionID:      optionID,
-		VoterIdentity: voterIdentity,
-		VoterIP:       clientIP,
+		VoterIdentity: userID,
+		VoterIP:       "",
 		UserID:        userID,
 		CreatedAt:     time.Now().UTC(),
 	}
@@ -119,3 +111,4 @@ func (s *DefaultVoteService) CastVote(
 		CreatedAt: vote.CreatedAt,
 	}, nil
 }
+

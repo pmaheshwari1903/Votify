@@ -32,7 +32,7 @@ func TestCastVoteAndDuplicateProtection(t *testing.T) {
 	optID := poll.Options[0].ID
 
 	// Cast Vote from authenticated user
-	res, err := voteSvc.CastVote(ctx, "voter_1", "", "127.0.0.1", votes.CastVoteRequest{
+	res, err := voteSvc.CastVote(ctx, "voter_1", votes.CastVoteRequest{
 		PollID:   poll.ID,
 		OptionID: optID,
 	})
@@ -50,7 +50,7 @@ func TestCastVoteAndDuplicateProtection(t *testing.T) {
 	}
 
 	// Duplicate Vote from same authenticated user -> should fail
-	_, err = voteSvc.CastVote(ctx, "voter_1", "", "127.0.0.1", votes.CastVoteRequest{
+	_, err = voteSvc.CastVote(ctx, "voter_1", votes.CastVoteRequest{
 		PollID:   poll.ID,
 		OptionID: optID,
 	})
@@ -58,25 +58,26 @@ func TestCastVoteAndDuplicateProtection(t *testing.T) {
 		t.Fatalf("Expected duplicate vote to be rejected")
 	}
 
-	// Cast Vote from unauthenticated public user (using anonymous voter ID cookie)
+	// Different authenticated user -> should succeed
 	opt2ID := poll.Options[1].ID
-	resAnon, err := voteSvc.CastVote(ctx, "", "anon_voter_123", "192.168.1.50", votes.CastVoteRequest{
+	res2, err := voteSvc.CastVote(ctx, "voter_2", votes.CastVoteRequest{
 		PollID:   poll.ID,
 		OptionID: opt2ID,
 	})
 	if err != nil {
-		t.Fatalf("Anonymous CastVote failed: %v", err)
+		t.Fatalf("Second user CastVote failed: %v", err)
 	}
-	if resAnon.PollID != poll.ID || resAnon.OptionID != opt2ID {
-		t.Fatalf("Anonymous CastVote returned unexpected response: %+v", resAnon)
+	if res2.PollID != poll.ID || res2.OptionID != opt2ID {
+		t.Fatalf("Second user CastVote returned unexpected response: %+v", res2)
 	}
 
-	// Duplicate Vote from same anonymous voter cookie -> should fail
-	_, err = voteSvc.CastVote(ctx, "", "anon_voter_123", "192.168.1.50", votes.CastVoteRequest{
+	// Unauthenticated user -> should fail
+	_, err = voteSvc.CastVote(ctx, "", votes.CastVoteRequest{
 		PollID:   poll.ID,
-		OptionID: opt2ID,
+		OptionID: optID,
 	})
 	if err == nil {
-		t.Fatalf("Expected duplicate anonymous vote to be rejected")
+		t.Fatalf("Expected unauthenticated vote to be rejected")
 	}
 }
+
