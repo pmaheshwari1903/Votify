@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -85,9 +86,12 @@ func (h *AuthHandler) OAuthLogin(c *gin.Context) {
 		authEndpoint = strings.TrimRight(cfg.OAuthIssuer, "/") + "/authorize"
 	}
 
-	state := GenerateSecureRandomState()
+	stateRandom := GenerateSecureRandomState()
 	codeVerifier := GeneratePKCEVerifier()
 	codeChallenge := ComputePKCEChallengeS256(codeVerifier)
+
+	// Combine random state & PKCE verifier into state payload so verifier survives cross-site redirects
+	fullState := fmt.Sprintf("%s.%s", stateRandom, codeVerifier)
 
 	if isSecure {
 		c.SetSameSite(http.SameSiteNoneMode)
@@ -95,7 +99,7 @@ func (h *AuthHandler) OAuthLogin(c *gin.Context) {
 		c.SetSameSite(http.SameSiteLaxMode)
 	}
 
-	c.SetCookie("oauth_state", state, 600, "/", "", isSecure, true)
+	c.SetCookie("oauth_state", stateRandom, 600, "/", "", isSecure, true)
 	c.SetCookie("oauth_code_verifier", codeVerifier, 600, "/", "", isSecure, true)
 	if c.Query("popup") == "true" {
 		c.SetCookie("oauth_popup", "true", 600, "/", "", isSecure, false)
@@ -112,7 +116,7 @@ func (h *AuthHandler) OAuthLogin(c *gin.Context) {
 	q.Set("client_id", cfg.OAuthClientID)
 	q.Set("redirect_uri", cfg.OAuthRedirectURI)
 	q.Set("scope", "openid profile email")
-	q.Set("state", state)
+	q.Set("state", fullState)
 	q.Set("code_challenge", codeChallenge)
 	q.Set("code_challenge_method", "S256")
 	u.RawQuery = q.Encode()
@@ -124,15 +128,26 @@ func (h *AuthHandler) OAuthCallback(c *gin.Context) {
 	cfg := config.Load()
 	isSecure := cfg.Env == "production"
 
-	state := c.Query("state")
+	stateParam := c.Query("state")
 	code := c.Query("code")
 
+	var stateRandom, codeVerifier string
+	if parts := strings.Split(stateParam, "."); len(parts) == 2 {
+		stateRandom = parts[0]
+		codeVerifier = parts[1]
+	} else {
+		stateRandom = stateParam
+	}
+
+	if codeVerifier == "" {
+		codeVerifier, _ = c.Cookie("oauth_code_verifier")
+	}
+
 	cookieState, _ := c.Cookie("oauth_state")
-	codeVerifier, _ := c.Cookie("oauth_code_verifier")
 	popupCookie, _ := c.Cookie("oauth_popup")
 	isPopup := popupCookie == "true" || c.Query("popup") == "true"
 
-	if state == "" || (cookieState != "" && state != cookieState) {
+	if stateParam == "" || (cookieState != "" && stateRandom != cookieState) {
 		response.BadRequest(c, "Invalid state parameter", nil)
 		return
 	}
