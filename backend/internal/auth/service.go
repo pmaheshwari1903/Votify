@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/votify/backend/internal/config"
 	"github.com/votify/backend/internal/errors"
 	"github.com/votify/backend/internal/middleware"
 )
@@ -23,6 +24,7 @@ type AuthService interface {
 	Register(ctx context.Context, req RegisterRequest) (*AuthResponse, error)
 	Login(ctx context.Context, req LoginRequest) (*AuthResponse, error)
 	GetUserByID(ctx context.Context, id string) (*UserResponse, error)
+	HandleOAuthCallback(ctx context.Context, code, codeVerifier string) (*AuthResponse, error)
 }
 
 type DefaultAuthService struct {
@@ -129,6 +131,95 @@ func (s *DefaultAuthService) GetUserByID(ctx context.Context, id string) (*UserR
 		Email:     user.Email,
 		Role:      user.Role,
 		CreatedAt: user.CreatedAt,
+	}, nil
+}
+
+func (s *DefaultAuthService) HandleOAuthCallback(ctx context.Context, code, codeVerifier string) (*AuthResponse, error) {
+	cfg := config.Load()
+
+	// 1. OIDC Discovery
+	meta, err := FetchOIDCDiscovery(ctx, cfg.OAuthIssuer)
+	if err != nil {
+		// Fallback to standard provider paths if discovery endpoint fails
+		meta = &OIDCDiscoveryMetadata{
+			Issuer:                cfg.OAuthIssuer,
+			AuthorizationEndpoint: strings.TrimRight(cfg.OAuthIssuer, "/") + "/authorize",
+			TokenEndpoint:         strings.TrimRight(cfg.OAuthIssuer, "/") + "/token",
+			UserinfoEndpoint:      strings.TrimRight(cfg.OAuthIssuer, "/") + "/userinfo",
+		}
+	}
+
+	// 2. Exchange Code for Access Token
+	tokens, err := ExchangeCodeForTokens(
+		ctx,
+		meta.TokenEndpoint,
+		cfg.OAuthClientID,
+		cfg.OAuthClientSecret,
+		code,
+		cfg.OAuthRedirectURI,
+		codeVerifier,
+	)
+	if err != nil {
+		return nil, errors.NewUnauthorizedError("Failed to exchange OAuth code: " + err.Error())
+	}
+
+	// 3. Fetch UserInfo from OIDC provider
+	userInfo, err := FetchUserInfo(ctx, meta.UserinfoEndpoint, tokens.AccessToken)
+	if err != nil {
+		return nil, errors.NewUnauthorizedError("Failed to fetch OIDC userinfo: " + err.Error())
+	}
+
+	email := strings.TrimSpace(strings.ToLower(userInfo.Email))
+	if email == "" {
+		if userInfo.Sub != "" {
+			email = userInfo.Sub + "@oidcauth.user"
+		} else {
+			return nil, errors.NewUnauthorizedError("No verified email or subject claim found in OIDC identity")
+		}
+	}
+
+	name := strings.TrimSpace(userInfo.Name)
+	if name == "" {
+		name = strings.TrimSpace(userInfo.GivenName + " " + userInfo.FamilyName)
+	}
+	if name == "" {
+		parts := strings.Split(email, "@")
+		name = parts[0]
+	}
+
+	// 4. Find or Create User in MongoDB
+	user, err := s.repo.FindByEmail(ctx, email)
+	if err != nil {
+		return nil, errors.NewInternalError(err)
+	}
+
+	if user == nil {
+		user = &User{
+			Name:         name,
+			Email:        email,
+			PasswordHash: "oauth_authenticated",
+			Role:         "user",
+		}
+		if err := s.repo.Create(ctx, user); err != nil {
+			return nil, errors.NewInternalError(err)
+		}
+	}
+
+	// 5. Generate Votify JWT
+	jwtToken, err := middleware.GenerateToken(user.ID, user.Email, user.Name, user.Role, s.jwtSecret, 24*time.Hour)
+	if err != nil {
+		return nil, errors.NewInternalError(err)
+	}
+
+	return &AuthResponse{
+		Token: jwtToken,
+		User: UserResponse{
+			ID:        user.ID,
+			Name:      user.Name,
+			Email:     user.Email,
+			Role:      user.Role,
+			CreatedAt: user.CreatedAt,
+		},
 	}, nil
 }
 

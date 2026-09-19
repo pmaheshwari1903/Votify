@@ -93,6 +93,8 @@ func main() {
 			authGroup.POST("/register", authHandler.Register)
 			authGroup.POST("/login", authHandler.Login)
 			authGroup.GET("/me", reqAuth, authHandler.Me)
+			authGroup.GET("/oauth/login", authHandler.OAuthLogin)
+			authGroup.GET("/oauth/callback", authHandler.OAuthCallback)
 		}
 
 		// Public Poll routes (placed before /polls/:id to prevent wildcard collision)

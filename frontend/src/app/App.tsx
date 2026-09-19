@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from '../components/ui/Button';
 import { LoginView } from '../views/LoginView';
-import { RegisterView } from '../views/RegisterView';
 import { DashboardView } from '../views/DashboardView';
 import { CreatePollView } from '../views/CreatePollView';
 import { PublicVoteView } from '../views/PublicVoteView';
@@ -10,7 +9,7 @@ import { apiClient } from '../lib/api';
 import type { User } from '../types';
 import './App.css';
 
-type ViewMode = 'dashboard' | 'create' | 'login' | 'register' | 'public-vote' | 'results';
+type ViewMode = 'dashboard' | 'create' | 'login' | 'public-vote' | 'results';
 
 export const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -18,8 +17,17 @@ export const App: React.FC = () => {
   const [activePollId, setActivePollId] = useState<string>('');
   const [initializing, setInitializing] = useState(true);
 
-  // Check URL pathname for direct links e.g. /poll/:id or /poll/:id/results
   useEffect(() => {
+    // 1. Check URL for OAuth token redirect parameter (?token=...)
+    const urlParams = new URLSearchParams(window.location.search);
+    const tokenParam = urlParams.get('token');
+    if (tokenParam) {
+      localStorage.setItem('votify_token', tokenParam);
+      // Clean query parameter from browser address bar
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    // 2. Check URL pathname for direct links e.g. /poll/:id or /poll/:id/results
     const path = window.location.pathname;
     if (path.startsWith('/poll/')) {
       const parts = path.split('/');
@@ -34,7 +42,7 @@ export const App: React.FC = () => {
       }
     }
 
-    // Check existing stored auth token
+    // 3. Check existing stored auth token
     const token = localStorage.getItem('votify_token');
     if (token) {
       apiClient
@@ -50,12 +58,6 @@ export const App: React.FC = () => {
       setInitializing(false);
     }
   }, []);
-
-  const handleLoginSuccess = (user: User, token: string) => {
-    localStorage.setItem('votify_token', token);
-    setUser(user);
-    setView('dashboard');
-  };
 
   const handleLogout = () => {
     localStorage.removeItem('votify_token');
@@ -113,14 +115,9 @@ export const App: React.FC = () => {
                 </Button>
               </>
             ) : (
-              <>
-                <Button variant="ghost" size="sm" onClick={() => setView('login')}>
-                  Sign In
-                </Button>
-                <Button variant="primary" size="sm" onClick={() => setView('register')}>
-                  Register
-                </Button>
-              </>
+              <Button variant="primary" size="sm" onClick={() => setView('login')}>
+                Sign In
+              </Button>
             )}
           </div>
         </div>
@@ -128,19 +125,7 @@ export const App: React.FC = () => {
 
       {/* Main View Router */}
       <main>
-        {view === 'login' && (
-          <LoginView
-            onSuccess={handleLoginSuccess}
-            onNavigateRegister={() => setView('register')}
-          />
-        )}
-
-        {view === 'register' && (
-          <RegisterView
-            onSuccess={handleLoginSuccess}
-            onNavigateLogin={() => setView('login')}
-          />
-        )}
+        {view === 'login' && <LoginView />}
 
         {view === 'dashboard' && (
           user ? (
@@ -150,10 +135,7 @@ export const App: React.FC = () => {
               onNavigateResults={navigateToResults}
             />
           ) : (
-            <LoginView
-              onSuccess={handleLoginSuccess}
-              onNavigateRegister={() => setView('register')}
-            />
+            <LoginView />
           )
         )}
 

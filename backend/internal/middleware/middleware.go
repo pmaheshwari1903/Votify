@@ -22,10 +22,16 @@ type JWTClaims struct {
 	Exp   int64  `json:"exp"`
 }
 
-// CORS returns a middleware that handles Cross-Origin Resource Sharing.
+// CORS returns a middleware that handles Cross-Origin Resource Sharing with credentials.
 func CORS() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
+		origin := c.GetHeader("Origin")
+		if origin != "" {
+			c.Header("Access-Control-Allow-Origin", origin)
+		} else {
+			c.Header("Access-Control-Allow-Origin", "*")
+		}
+		c.Header("Access-Control-Allow-Credentials", "true")
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization, X-Request-ID")
 		c.Header("Access-Control-Expose-Headers", "X-Request-ID")
@@ -53,21 +59,32 @@ func RequestID() gin.HandlerFunc {
 	}
 }
 
-// AuthGuard validates Authorization: Bearer <token> and sets context identity.
+// getTokenFromRequest extracts token from Authorization header OR HttpOnly cookie.
+func getTokenFromRequest(c *gin.Context) string {
+	authHeader := c.GetHeader("Authorization")
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		return strings.TrimPrefix(authHeader, "Bearer ")
+	}
+	if cookieToken, err := c.Cookie("votify_token"); err == nil && cookieToken != "" {
+		return cookieToken
+	}
+	return ""
+}
+
+// AuthGuard validates JWT token from header or cookie and sets context identity.
 func AuthGuard(secret string) gin.HandlerFunc {
 	if secret == "" {
 		secret = "your-jwt-secret-min-32-chars"
 	}
 
 	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+		tokenStr := getTokenFromRequest(c)
+		if tokenStr == "" {
 			response.Unauthorized(c, "Authentication token required")
 			c.Abort()
 			return
 		}
 
-		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
 		claims, err := ParseAndValidateToken(tokenStr, secret)
 		if err != nil {
 			response.Unauthorized(c, "Invalid or expired authentication token")
@@ -94,9 +111,8 @@ func OptionalAuth(secret string) gin.HandlerFunc {
 	}
 
 	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-		if strings.HasPrefix(authHeader, "Bearer ") {
-			tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+		tokenStr := getTokenFromRequest(c)
+		if tokenStr != "" {
 			claims, err := ParseAndValidateToken(tokenStr, secret)
 			if err == nil && claims != nil {
 				c.Set("userID", claims.Sub)
