@@ -29,9 +29,12 @@ type MongoPollRepository struct {
 func NewMongoPollRepository(db *mongo.Database) *MongoPollRepository {
 	coll := db.Collection("polls")
 
-	// Create index on owner_id for query speed
+	// Create index on owner_id and created_at for fast sorted query speed
 	_, _ = coll.Indexes().CreateOne(context.Background(), mongo.IndexModel{
-		Keys: bson.D{{Key: "owner_id", Value: 1}},
+		Keys: bson.D{
+			{Key: "owner_id", Value: 1},
+			{Key: "created_at", Value: -1},
+		},
 	})
 
 	return &MongoPollRepository{coll: coll}

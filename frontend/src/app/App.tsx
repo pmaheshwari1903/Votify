@@ -33,16 +33,12 @@ export const App: React.FC = () => {
       }
     }
 
-    // TEMPORARY: Bypass auth — mock user to go straight to dashboard
-    setUser({ id: 'temp-user', name: 'Dev User', email: 'dev@votify.app', role: 'user', createdAt: new Date().toISOString() });
-    setInitializing(false);
-
-    // TODO: Restore real auth check
-    // apiClient
-    //   .get<User>('/auth/me')
-    //   .then((u) => setUser(u))
-    //   .catch(() => {})
-    //   .finally(() => setInitializing(false));
+    // Restore real OIDC authentication check
+    apiClient
+      .get<User>('/auth/me')
+      .then((u) => setUser(u))
+      .catch(() => setUser(null))
+      .finally(() => setInitializing(false));
   }, []);
 
   const handleLogout = () => {

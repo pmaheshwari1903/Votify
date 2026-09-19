@@ -17,12 +17,21 @@ export function useRealtimeResults(pollId: string, initialOptions?: PollOption[]
   const [status, setStatus] = useState<RealtimeStatus>('disconnected');
   const socketRef = useRef<WebSocket | null>(null);
 
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     if (initialOptions && initialOptions.length > 0) {
-      setOptions(initialOptions);
+      setOptions((prev) => {
+        if (prev.length === 0) return initialOptions;
+        // Only update if option IDs or values changed to avoid triggering unnecessary re-renders
+        const isSame =
+          prev.length === initialOptions.length &&
+          prev.every((opt, idx) => opt.id === initialOptions[idx]?.id && opt.voteCount === initialOptions[idx]?.voteCount);
+        return isSame ? prev : initialOptions;
+      });
     }
     if (initialTotalVotes !== undefined) {
-      setTotalVotes(initialTotalVotes);
+      setTotalVotes((prev) => (prev === initialTotalVotes ? prev : initialTotalVotes));
     }
   }, [initialOptions, initialTotalVotes]);
 
@@ -66,8 +75,8 @@ export function useRealtimeResults(pollId: string, initialOptions?: PollOption[]
       ws.onclose = () => {
         if (!isUnmounted) {
           setStatus('disconnected');
-          // Auto-reconnect after 3 seconds
-          setTimeout(() => {
+          // Auto-reconnect after 3 seconds safely
+          reconnectTimerRef.current = setTimeout(() => {
             if (!isUnmounted) connect();
           }, 3000);
         }
@@ -78,6 +87,9 @@ export function useRealtimeResults(pollId: string, initialOptions?: PollOption[]
 
     return () => {
       isUnmounted = true;
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+      }
       if (socketRef.current) {
         socketRef.current.close();
       }

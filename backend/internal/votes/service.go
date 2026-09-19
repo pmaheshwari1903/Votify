@@ -102,7 +102,8 @@ func (s *DefaultVoteService) CastVote(
 
 	_ = s.pollService.IncrementVote(ctx, pollID, optionID)
 
-	s.realtimeService.PublishUpdate(ctx, pollID)
+	// Broadcast live update asynchronously so HTTP vote submission response returns immediately
+	go s.realtimeService.PublishUpdate(context.Background(), pollID)
 
 	return &VoteResponse{
 		ID:        vote.ID,

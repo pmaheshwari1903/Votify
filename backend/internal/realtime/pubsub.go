@@ -24,7 +24,8 @@ type RealtimeUpdateMessage struct {
 
 type RealtimeService struct {
 	mu          sync.RWMutex
-	listeners   map[string][]func(msg RealtimeUpdateMessage)
+	listeners   map[string]map[uint64]func(msg RealtimeUpdateMessage)
+	subCounter  uint64
 	redisClient *redis.Client
 	pollService polls.PollService
 }
@@ -40,7 +41,7 @@ func NewRealtimeService(redisAddr, redisPassword string, redisDB int, pollServic
 	}
 
 	return &RealtimeService{
-		listeners:   make(map[string][]func(msg RealtimeUpdateMessage)),
+		listeners:   make(map[string]map[uint64]func(msg RealtimeUpdateMessage)),
 		redisClient: client,
 		pollService: pollService,
 	}
@@ -48,7 +49,13 @@ func NewRealtimeService(redisAddr, redisPassword string, redisDB int, pollServic
 
 func (s *RealtimeService) Subscribe(pollID string, callback func(msg RealtimeUpdateMessage)) func() {
 	s.mu.Lock()
-	s.listeners[pollID] = append(s.listeners[pollID], callback)
+	s.subCounter++
+	subID := s.subCounter
+
+	if s.listeners[pollID] == nil {
+		s.listeners[pollID] = make(map[uint64]func(msg RealtimeUpdateMessage))
+	}
+	s.listeners[pollID][subID] = callback
 	firstListener := len(s.listeners[pollID]) == 1
 	s.mu.Unlock()
 
@@ -85,12 +92,11 @@ func (s *RealtimeService) Subscribe(pollID string, callback func(msg RealtimeUpd
 		}
 		s.mu.Lock()
 		defer s.mu.Unlock()
-		list := s.listeners[pollID]
-		for i, fn := range list {
-			// Compare pointer or remove
-			_ = fn
-			s.listeners[pollID] = append(list[:i], list[i+1:]...)
-			break
+		if m, exists := s.listeners[pollID]; exists {
+			delete(m, subID)
+			if len(m) == 0 {
+				delete(s.listeners, pollID)
+			}
 		}
 	}
 }
@@ -117,10 +123,15 @@ func (s *RealtimeService) PublishUpdate(ctx context.Context, pollID string) {
 
 func (s *RealtimeService) notifyLocalListeners(pollID string, msg RealtimeUpdateMessage) {
 	s.mu.RLock()
-	listeners := append([]func(msg RealtimeUpdateMessage){}, s.listeners[pollID]...)
+	var callbacks []func(msg RealtimeUpdateMessage)
+	if m, exists := s.listeners[pollID]; exists {
+		for _, fn := range m {
+			callbacks = append(callbacks, fn)
+		}
+	}
 	s.mu.RUnlock()
 
-	for _, fn := range listeners {
+	for _, fn := range callbacks {
 		go fn(msg)
 	}
 }
