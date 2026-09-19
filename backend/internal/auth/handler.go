@@ -89,8 +89,17 @@ func (h *AuthHandler) OAuthLogin(c *gin.Context) {
 	codeVerifier := GeneratePKCEVerifier()
 	codeChallenge := ComputePKCEChallengeS256(codeVerifier)
 
+	if isSecure {
+		c.SetSameSite(http.SameSiteNoneMode)
+	} else {
+		c.SetSameSite(http.SameSiteLaxMode)
+	}
+
 	c.SetCookie("oauth_state", state, 600, "/", "", isSecure, true)
 	c.SetCookie("oauth_code_verifier", codeVerifier, 600, "/", "", isSecure, true)
+	if c.Query("popup") == "true" {
+		c.SetCookie("oauth_popup", "true", 600, "/", "", isSecure, false)
+	}
 
 	u, err := url.Parse(authEndpoint)
 	if err != nil {
@@ -120,6 +129,8 @@ func (h *AuthHandler) OAuthCallback(c *gin.Context) {
 
 	cookieState, _ := c.Cookie("oauth_state")
 	codeVerifier, _ := c.Cookie("oauth_code_verifier")
+	popupCookie, _ := c.Cookie("oauth_popup")
+	isPopup := popupCookie == "true" || c.Query("popup") == "true"
 
 	if state == "" || (cookieState != "" && state != cookieState) {
 		response.BadRequest(c, "Invalid state parameter", nil)
@@ -137,12 +148,42 @@ func (h *AuthHandler) OAuthCallback(c *gin.Context) {
 		return
 	}
 
+	if isSecure {
+		c.SetSameSite(http.SameSiteNoneMode)
+	} else {
+		c.SetSameSite(http.SameSiteLaxMode)
+	}
+
 	// Clear OAuth flow cookies
 	c.SetCookie("oauth_state", "", -1, "/", "", isSecure, true)
 	c.SetCookie("oauth_code_verifier", "", -1, "/", "", isSecure, true)
+	c.SetCookie("oauth_popup", "", -1, "/", "", isSecure, false)
 
-	// Set JWT as HttpOnly cookie instead of passing in URL
+	// Set JWT as HttpOnly cookie
 	c.SetCookie("votify_token", authRes.Token, 86400, "/", "", isSecure, true)
+
+	if isPopup {
+		c.Header("Content-Type", "text/html; charset=utf-8")
+		c.String(http.StatusOK, `<!DOCTYPE html>
+<html>
+<head><title>Authentication Successful</title></head>
+<body style="font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #faf9f6; color: #1a1a18;">
+  <div style="text-align: center; padding: 24px; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+    <h2 style="margin-bottom: 8px;">✓ Signed in successfully</h2>
+    <p style="color: #6b6460; font-size: 14px;">Closing login window...</p>
+  </div>
+  <script>
+    if (window.opener) {
+      window.opener.postMessage({ type: 'OAUTH_SUCCESS' }, '*');
+      window.close();
+    } else {
+      window.location.href = '`+strings.TrimRight(cfg.FrontendURL, "/")+`';
+    }
+  </script>
+</body>
+</html>`)
+		return
+	}
 
 	c.Redirect(http.StatusFound, strings.TrimRight(cfg.FrontendURL, "/"))
 }

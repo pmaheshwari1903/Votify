@@ -4,9 +4,33 @@ import { ENV } from '../config/env';
 
 export const LoginView: React.FC = () => {
   const handleSignIn = () => {
-    // Navigate to OAuth Login endpoint on Votify Backend
-    const loginUrl = `${ENV.API_BASE_URL}/auth/oauth/login`;
-    window.location.href = loginUrl;
+    const loginUrl = `${ENV.API_BASE_URL}/auth/oauth/login?popup=true`;
+    const width = 500;
+    const height = 650;
+    const left = window.screen.width / 2 - width / 2;
+    const top = window.screen.height / 2 - height / 2;
+
+    // Open OIDC login in a popup window
+    const popup = window.open(
+      loginUrl,
+      'MaheshwariOIDCAuth',
+      `width=${width},height=${height},top=${top},left=${left},scrollbars=yes,status=yes`
+    );
+
+    // Fall back to direct navigation if popups are blocked by browser settings
+    if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+      window.location.href = loginUrl;
+      return;
+    }
+
+    // Listen for completion postMessage from popup
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'OAUTH_SUCCESS') {
+        window.removeEventListener('message', handleMessage);
+        window.location.reload();
+      }
+    };
+    window.addEventListener('message', handleMessage);
   };
 
   return (
