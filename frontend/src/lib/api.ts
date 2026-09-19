@@ -1,5 +1,5 @@
 // Votify API Client Base
-// Centralized fetch wrapper targeting API Gateway with response envelope handling.
+// Centralized fetch wrapper with HttpOnly cookie authentication.
 
 import { ENV } from '../config/env';
 import type { ApiResponse } from '../types';
@@ -24,15 +24,10 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     ...(options.headers as Record<string, string>),
   };
 
-  // Attach token if present
-  const token = localStorage.getItem('votify_token');
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
   const response = await fetch(url, {
     ...options,
     headers,
+    credentials: 'include', // Send HttpOnly cookies automatically
   });
 
   const body: ApiResponse<T> = await response.json().catch(() => ({

@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -75,6 +74,7 @@ func (h *AuthHandler) Me(c *gin.Context) {
 func (h *AuthHandler) OAuthLogin(c *gin.Context) {
 	cfg := config.Load()
 	ctx := c.Request.Context()
+	isSecure := cfg.Env == "production"
 
 	meta, err := FetchOIDCDiscovery(ctx, cfg.OAuthIssuer)
 	authEndpoint := ""
@@ -89,8 +89,8 @@ func (h *AuthHandler) OAuthLogin(c *gin.Context) {
 	codeVerifier := GeneratePKCEVerifier()
 	codeChallenge := ComputePKCEChallengeS256(codeVerifier)
 
-	c.SetCookie("oauth_state", state, 600, "/", "", false, true)
-	c.SetCookie("oauth_code_verifier", codeVerifier, 600, "/", "", false, true)
+	c.SetCookie("oauth_state", state, 600, "/", "", isSecure, true)
+	c.SetCookie("oauth_code_verifier", codeVerifier, 600, "/", "", isSecure, true)
 
 	u, err := url.Parse(authEndpoint)
 	if err != nil {
@@ -113,6 +113,7 @@ func (h *AuthHandler) OAuthLogin(c *gin.Context) {
 
 func (h *AuthHandler) OAuthCallback(c *gin.Context) {
 	cfg := config.Load()
+	isSecure := cfg.Env == "production"
 
 	state := c.Query("state")
 	code := c.Query("code")
@@ -136,9 +137,22 @@ func (h *AuthHandler) OAuthCallback(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie("oauth_state", "", -1, "/", "", false, true)
-	c.SetCookie("oauth_code_verifier", "", -1, "/", "", false, true)
+	// Clear OAuth flow cookies
+	c.SetCookie("oauth_state", "", -1, "/", "", isSecure, true)
+	c.SetCookie("oauth_code_verifier", "", -1, "/", "", isSecure, true)
 
-	redirectURL := fmt.Sprintf("%s?token=%s", strings.TrimRight(cfg.FrontendURL, "/"), authRes.Token)
-	c.Redirect(http.StatusFound, redirectURL)
+	// Set JWT as HttpOnly cookie instead of passing in URL
+	c.SetCookie("votify_token", authRes.Token, 86400, "/", "", isSecure, true)
+
+	c.Redirect(http.StatusFound, strings.TrimRight(cfg.FrontendURL, "/"))
+}
+
+func (h *AuthHandler) Logout(c *gin.Context) {
+	cfg := config.Load()
+	isSecure := cfg.Env == "production"
+
+	// Clear the JWT cookie
+	c.SetCookie("votify_token", "", -1, "/", "", isSecure, true)
+
+	response.OK(c, gin.H{"message": "Logged out successfully"})
 }

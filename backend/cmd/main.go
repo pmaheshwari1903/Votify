@@ -93,6 +93,7 @@ func main() {
 			authGroup.POST("/register", authHandler.Register)
 			authGroup.POST("/login", authHandler.Login)
 			authGroup.GET("/me", reqAuth, authHandler.Me)
+			authGroup.POST("/logout", authHandler.Logout)
 			authGroup.GET("/oauth/login", authHandler.OAuthLogin)
 			authGroup.GET("/oauth/callback", authHandler.OAuthCallback)
 		}

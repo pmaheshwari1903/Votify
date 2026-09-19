@@ -18,16 +18,7 @@ export const App: React.FC = () => {
   const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
-    // 1. Check URL for OAuth token redirect parameter (?token=...)
-    const urlParams = new URLSearchParams(window.location.search);
-    const tokenParam = urlParams.get('token');
-    if (tokenParam) {
-      localStorage.setItem('votify_token', tokenParam);
-      // Clean query parameter from browser address bar
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-
-    // 2. Check URL pathname for direct links e.g. /poll/:id or /poll/:id/results
+    // Check URL pathname for direct links e.g. /poll/:id or /poll/:id/results
     const path = window.location.pathname;
     if (path.startsWith('/poll/')) {
       const parts = path.split('/');
@@ -42,25 +33,20 @@ export const App: React.FC = () => {
       }
     }
 
-    // 3. Check existing stored auth token
-    const token = localStorage.getItem('votify_token');
-    if (token) {
-      apiClient
-        .get<User>('/auth/me')
-        .then((u) => {
-          setUser(u);
-        })
-        .catch(() => {
-          localStorage.removeItem('votify_token');
-        })
-        .finally(() => setInitializing(false));
-    } else {
-      setInitializing(false);
-    }
+    // Check auth via HttpOnly cookie (sent automatically with credentials)
+    apiClient
+      .get<User>('/auth/me')
+      .then((u) => {
+        setUser(u);
+      })
+      .catch(() => {
+        // Not authenticated — cookie missing or expired
+      })
+      .finally(() => setInitializing(false));
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('votify_token');
+    apiClient.post('/auth/logout').catch(() => {});
     setUser(null);
     setView('login');
   };

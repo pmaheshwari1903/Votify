@@ -8,6 +8,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -95,12 +97,17 @@ func ExchangeCodeForTokens(
 	data.Set("code", code)
 	data.Set("redirect_uri", redirectURI)
 	data.Set("client_id", clientID)
-	if clientSecret != "" {
+
+	// Only send client_secret if it's a real value (not empty or a placeholder)
+	if clientSecret != "" && !strings.HasPrefix(clientSecret, "<") && clientSecret != "your-client-secret" {
 		data.Set("client_secret", clientSecret)
 	}
 	if codeVerifier != "" {
 		data.Set("code_verifier", codeVerifier)
 	}
+
+	log.Printf("[OAuth] Token exchange: endpoint=%s client_id=%s redirect_uri=%s has_verifier=%t",
+		tokenEndpoint, clientID, redirectURI, codeVerifier != "")
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenEndpoint, strings.NewReader(data.Encode()))
 	if err != nil {
@@ -115,14 +122,19 @@ func ExchangeCodeForTokens(
 	}
 	defer resp.Body.Close()
 
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read token response body: %w", err)
+	}
+
 	if resp.StatusCode != http.StatusOK {
-		var errBody map[string]interface{}
-		_ = json.NewDecoder(resp.Body).Decode(&errBody)
-		return nil, fmt.Errorf("token endpoint returned status %d: %v", resp.StatusCode, errBody)
+		// Log sanitized error (no tokens/secrets)
+		log.Printf("[OAuth] Token endpoint error: status=%d body=%s", resp.StatusCode, string(bodyBytes))
+		return nil, fmt.Errorf("token endpoint returned status %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	var tokenRes TokenResponse
-	if err := json.NewDecoder(resp.Body).Decode(&tokenRes); err != nil {
+	if err := json.Unmarshal(bodyBytes, &tokenRes); err != nil {
 		return nil, fmt.Errorf("decode token response failed: %w", err)
 	}
 
