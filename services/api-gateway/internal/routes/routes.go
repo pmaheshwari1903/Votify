@@ -11,8 +11,6 @@ import (
 )
 
 // Register sets up all API Gateway routes.
-// The gateway is the single frontend entry point that forwards requests
-// to specialized internal microservices. It contains NO business logic or DB access.
 func Register(router *gin.Engine, cfg *config.Config) {
 	// Global middleware
 	router.Use(middleware.CORS())
@@ -23,27 +21,41 @@ func Register(router *gin.Engine, cfg *config.Config) {
 	router.GET("/health", health.HealthCheckHandler("api-gateway"))
 	router.GET("/ready", health.ReadinessCheckHandler("api-gateway", checker))
 
+	// Optional auth extraction middleware for all API routes
+	optAuth := middleware.OptionalAuth(cfg.JWTSecret)
+	reqAuth := middleware.AuthGuard(cfg.JWTSecret)
+
 	// API v1 route groups
 	v1 := router.Group("/api/v1")
 	{
 		// Auth routes → Auth Service (:8081)
-		v1.Any("/auth/*path", handler.ProxyPlaceholder("auth-service", cfg.AuthServiceURL))
+		v1.Any("/auth/*path", optAuth, handler.ReverseProxy(cfg.AuthServiceURL, "/api/v1"))
 
-		// Poll routes → Poll Service (:8082)
-		v1.Any("/polls/*path", handler.ProxyPlaceholder("poll-service", cfg.PollServiceURL))
+		// Public Poll endpoints → Poll Service (:8082)
+		v1.GET("/polls/public/:id", handler.ReverseProxy(cfg.PollServiceURL, "/api/v1"))
+		v1.GET("/polls/:id/results", handler.ReverseProxy(cfg.PollServiceURL, "/api/v1"))
+
+		// Protected Poll endpoints → Poll Service (:8082)
+		v1.POST("/polls", reqAuth, handler.ReverseProxy(cfg.PollServiceURL, "/api/v1"))
+		v1.GET("/polls", reqAuth, handler.ReverseProxy(cfg.PollServiceURL, "/api/v1"))
+		v1.GET("/polls/:id", reqAuth, handler.ReverseProxy(cfg.PollServiceURL, "/api/v1"))
+		v1.PATCH("/polls/:id", reqAuth, handler.ReverseProxy(cfg.PollServiceURL, "/api/v1"))
+		v1.DELETE("/polls/:id", reqAuth, handler.ReverseProxy(cfg.PollServiceURL, "/api/v1"))
+		v1.POST("/polls/:id/open", reqAuth, handler.ReverseProxy(cfg.PollServiceURL, "/api/v1"))
+		v1.POST("/polls/:id/close", reqAuth, handler.ReverseProxy(cfg.PollServiceURL, "/api/v1"))
 
 		// Vote routes → Vote Service (:8083)
-		v1.Any("/votes/*path", handler.ProxyPlaceholder("vote-service", cfg.VoteServiceURL))
+		v1.POST("/votes", optAuth, handler.ReverseProxy(cfg.VoteServiceURL, "/api/v1"))
 
 		// Analytics routes → Analytics Service (:8085)
-		v1.Any("/analytics/*path", handler.ProxyPlaceholder("analytics-service", cfg.AnalyticsServiceURL))
+		v1.Any("/analytics/*path", optAuth, handler.ReverseProxy(cfg.AnalyticsServiceURL, "/api/v1"))
 
 		// Payment routes → Payment Service (:8086)
-		v1.Any("/payments/*path", handler.ProxyPlaceholder("payment-service", cfg.PaymentServiceURL))
+		v1.Any("/payments/*path", reqAuth, handler.ReverseProxy(cfg.PaymentServiceURL, "/api/v1"))
 	}
 
 	// Realtime WebSocket proxy boundary → Realtime Service (:8084)
-	router.Any("/ws/*path", handler.ProxyPlaceholder("realtime-service", cfg.RealtimeServiceURL))
+	router.Any("/ws/*path", handler.ReverseProxy(cfg.RealtimeServiceURL, ""))
 
 	// 404 handler
 	router.NoRoute(func(c *gin.Context) {

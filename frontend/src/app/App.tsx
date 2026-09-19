@@ -1,148 +1,185 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '../components/ui/Button';
-import { APP_ROUTES } from './router';
-import { ENV } from '../config/env';
+import { LoginView } from '../views/LoginView';
+import { RegisterView } from '../views/RegisterView';
+import { DashboardView } from '../views/DashboardView';
+import { CreatePollView } from '../views/CreatePollView';
+import { PublicVoteView } from '../views/PublicVoteView';
+import { ResultsView } from '../views/ResultsView';
+import { apiClient } from '../lib/api';
+import type { User } from '../types';
 import './App.css';
 
-export const App: React.FC = () => {
-  const services = [
-    { name: 'API Gateway', port: '8080', route: '/api/v1/*' },
-    { name: 'Auth Service', port: '8081', route: '/api/v1/auth/*' },
-    { name: 'Poll Service', port: '8082', route: '/api/v1/polls/*' },
-    { name: 'Vote Service', port: '8083', route: '/api/v1/votes/*' },
-    { name: 'Realtime Service', port: '8084', route: '/ws/*' },
-    { name: 'Analytics Service', port: '8085', route: '/api/v1/analytics/*' },
-    { name: 'Payment Service', port: '8086', route: '/api/v1/payments/*' },
-  ];
+type ViewMode = 'dashboard' | 'create' | 'login' | 'register' | 'public-vote' | 'results';
 
-  const colorSwatches = [
-    { name: 'Vermilion', code: '#D94032', textLight: true, var: '--v-color-vermilion' },
-    { name: 'Ink Black', code: '#1A1A1A', textLight: true, var: '--v-color-ink-black' },
-    { name: 'Deep Ink', code: '#0D0D0D', textLight: true, var: '--v-color-deep-ink' },
-    { name: 'Washi Cream', code: '#FAF7F2', textLight: false, var: '--v-color-washi' },
-    { name: 'Warm Gray', code: '#6B6460', textLight: true, var: '--v-color-warm-gray' },
-    { name: 'Sakura', code: '#F0C4C4', textLight: false, var: '--v-color-sakura' },
-  ];
+export const App: React.FC = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [view, setView] = useState<ViewMode>('dashboard');
+  const [activePollId, setActivePollId] = useState<string>('');
+  const [initializing, setInitializing] = useState(true);
+
+  // Check URL pathname for direct links e.g. /poll/:id or /poll/:id/results
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (path.startsWith('/poll/')) {
+      const parts = path.split('/');
+      const id = parts[2];
+      if (id) {
+        setActivePollId(id);
+        if (parts[3] === 'results') {
+          setView('results');
+        } else {
+          setView('public-vote');
+        }
+      }
+    }
+
+    // Check existing stored auth token
+    const token = localStorage.getItem('votify_token');
+    if (token) {
+      apiClient
+        .get<User>('/auth/me')
+        .then((u) => {
+          setUser(u);
+        })
+        .catch(() => {
+          localStorage.removeItem('votify_token');
+        })
+        .finally(() => setInitializing(false));
+    } else {
+      setInitializing(false);
+    }
+  }, []);
+
+  const handleLoginSuccess = (user: User, token: string) => {
+    localStorage.setItem('votify_token', token);
+    setUser(user);
+    setView('dashboard');
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('votify_token');
+    setUser(null);
+    setView('login');
+  };
+
+  const navigateToVote = (pollId: string) => {
+    setActivePollId(pollId);
+    window.history.pushState({}, '', `/poll/${pollId}`);
+    setView('public-vote');
+  };
+
+  const navigateToResults = (pollId: string) => {
+    setActivePollId(pollId);
+    window.history.pushState({}, '', `/poll/${pollId}/results`);
+    setView('results');
+  };
+
+  const navigateToDashboard = () => {
+    window.history.pushState({}, '', '/dashboard');
+    setView('dashboard');
+  };
+
+  if (initializing) {
+    return (
+      <div style={{ maxWidth: '400px', margin: '100px auto', textAlign: 'center', color: 'var(--v-color-warm-gray)' }}>
+        Initializing Votify...
+      </div>
+    );
+  }
 
   return (
-    <div className="app-container">
-      <header className="hero-header">
-        <span className="brand-badge">VOTIFY ARCHITECTURE FOUNDATION</span>
-        <h1 className="hero-title">VOTIFY</h1>
-        <p className="hero-tagline">Real-time polling, beautifully simple.</p>
-      </header>
-
-      <main className="section-grid">
-        {/* Japanese Editorial Design Tokens */}
-        <section className="card">
-          <div className="card-title">
-            <span>Design System Tokens</span>
-            <span style={{ fontSize: '12px', color: 'var(--v-color-vermilion)' }}>Japanese Editorial</span>
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--v-color-washi)' }}>
+      {/* Navigation Header */}
+      <nav className="v-navbar">
+        <div className="v-navbar-inner">
+          <div className="v-logo" onClick={navigateToDashboard}>
+            <span>VOTIFY</span>
+            <span className="v-logo-dot" />
           </div>
-          <p className="card-desc">
-            Built using custom CSS custom properties (variables) featuring warm washi backgrounds, deep ink typography, and signature vermilion accents.
-          </p>
 
-          <div className="palette-grid">
-            {colorSwatches.map((s) => (
-              <div
-                key={s.name}
-                className="swatch"
-                style={{
-                  backgroundColor: `var(${s.var})`,
-                  color: s.textLight ? '#FFFFFF' : '#1A1A1A',
-                }}
-              >
-                <div className="swatch-label">
-                  <div>{s.name}</div>
-                  <div style={{ opacity: 0.8, fontSize: '10px' }}>{s.code}</div>
+          <div className="v-nav-actions">
+            {user ? (
+              <>
+                <div className="v-user-chip">
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--v-color-success)' }} />
+                  {user.name}
                 </div>
-              </div>
-            ))}
+                <Button variant="outline" size="sm" onClick={navigateToDashboard}>
+                  Dashboard
+                </Button>
+                <Button variant="ghost" size="sm" onClick={handleLogout}>
+                  Logout
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="ghost" size="sm" onClick={() => setView('login')}>
+                  Sign In
+                </Button>
+                <Button variant="primary" size="sm" onClick={() => setView('register')}>
+                  Register
+                </Button>
+              </>
+            )}
           </div>
-        </section>
+        </div>
+      </nav>
 
-        {/* UI Components Showcase */}
-        <section className="card">
-          <div className="card-title">
-            <span>Button Component</span>
-            <span style={{ fontSize: '12px', color: 'var(--v-color-warm-gray)' }}>Reusable UI</span>
-          </div>
-          <p className="card-desc">
-            Accessible, state-aware button components adhering to Votify spacing, typography, and hover micro-interactions.
-          </p>
+      {/* Main View Router */}
+      <main>
+        {view === 'login' && (
+          <LoginView
+            onSuccess={handleLoginSuccess}
+            onNavigateRegister={() => setView('register')}
+          />
+        )}
 
-          <div className="button-showcase" style={{ marginBottom: '16px' }}>
-            <Button variant="primary" size="md">Primary Button</Button>
-            <Button variant="secondary" size="md">Secondary</Button>
-            <Button variant="outline" size="md">Outline</Button>
-            <Button variant="ghost" size="md">Ghost</Button>
-          </div>
+        {view === 'register' && (
+          <RegisterView
+            onSuccess={handleLoginSuccess}
+            onNavigateLogin={() => setView('login')}
+          />
+        )}
 
-          <div className="button-showcase">
-            <Button variant="primary" size="sm">Small</Button>
-            <Button variant="primary" size="md">Medium</Button>
-            <Button variant="primary" size="lg">Large</Button>
-            <Button variant="primary" size="md" disabled>Disabled</Button>
-          </div>
-        </section>
+        {view === 'dashboard' && (
+          user ? (
+            <DashboardView
+              onNavigateCreate={() => setView('create')}
+              onNavigateVote={navigateToVote}
+              onNavigateResults={navigateToResults}
+            />
+          ) : (
+            <LoginView
+              onSuccess={handleLoginSuccess}
+              onNavigateRegister={() => setView('register')}
+            />
+          )
+        )}
 
-        {/* Backend Microservices Architecture */}
-        <section className="card" style={{ gridColumn: '1 / -1' }}>
-          <div className="card-title">
-            <span>Backend Microservices Topology</span>
-            <span style={{ fontSize: '12px', color: 'var(--v-color-success)' }}>7 Go Services Ready</span>
-          </div>
-          <p className="card-desc">
-            Independent Go modules communicating via Gin HTTP routes, Kafka domain events, and Redis pub/sub channels.
-          </p>
+        {view === 'create' && (
+          <CreatePollView
+            onSuccess={(poll) => navigateToVote(poll.id)}
+            onCancel={navigateToDashboard}
+          />
+        )}
 
-          <div className="service-list">
-            {services.map((svc) => (
-              <div key={svc.name} className="service-item">
-                <div className="service-info">
-                  <span className="dot"></span>
-                  <span className="service-name">{svc.name}</span>
-                </div>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <span style={{ fontSize: '12px', color: 'var(--v-color-warm-gray)' }}>{svc.route}</span>
-                  <span className="service-port">:{svc.port}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+        {view === 'public-vote' && (
+          <PublicVoteView
+            pollId={activePollId}
+            onNavigateResults={navigateToResults}
+            onNavigateDashboard={navigateToDashboard}
+          />
+        )}
 
-        {/* Application Route Stubs */}
-        <section className="card" style={{ gridColumn: '1 / -1' }}>
-          <div className="card-title">
-            <span>Application Routing Blueprint</span>
-            <span style={{ fontSize: '12px', color: 'var(--v-color-warm-gray)' }}>{APP_ROUTES.length} Routes Defined</span>
-          </div>
-          <p className="card-desc">
-            Navigation structure and API service boundaries ready for feature development.
-          </p>
-
-          <div className="service-list">
-            {APP_ROUTES.map((route) => (
-              <div key={route.path} className="service-item">
-                <div className="service-info">
-                  <span className="service-name" style={{ fontFamily: 'monospace' }}>{route.path}</span>
-                  <span style={{ fontSize: '13px', color: 'var(--v-color-ink-black)' }}>— {route.name}</span>
-                </div>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  <span style={{ fontSize: '12px', color: 'var(--v-color-warm-gray)' }}>{route.description}</span>
-                  <span className="service-port">{route.service}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+        {view === 'results' && (
+          <ResultsView
+            pollId={activePollId}
+            onNavigateVote={navigateToVote}
+            onNavigateDashboard={navigateToDashboard}
+          />
+        )}
       </main>
-
-      <footer className="footer-note">
-        <p>Votify Foundation v{ENV.APP_VERSION} | Environment: {ENV.APP_ENV} | Monorepo Structure Established</p>
-      </footer>
     </div>
   );
 };

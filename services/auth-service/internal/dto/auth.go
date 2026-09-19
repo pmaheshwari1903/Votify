@@ -1,32 +1,32 @@
 package dto
 
+import "time"
+
 // RegisterRequest represents the data required to register a new user.
-// Validation tags define the structural constraints that the backend
-// enforces independently of any frontend validation.
 type RegisterRequest struct {
-	Email    string `json:"email" validate:"required,email,max=255"`
-	Name     string `json:"name" validate:"required,min=2,max=100"`
-	Password string `json:"password" validate:"required,min=8,max=128"`
+	Email    string `json:"email" binding:"required,email,max=255"`
+	Name     string `json:"name" binding:"required,min=2,max=100"`
+	Password string `json:"password" binding:"required,min=8,max=128"`
 }
 
 // LoginRequest represents the data required to log in.
 type LoginRequest struct {
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required"`
-}
-
-// AuthResponse is returned after successful authentication.
-// It contains the JWT token and basic user info.
-type AuthResponse struct {
-	Token string       `json:"token"`
-	User  UserResponse `json:"user"`
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
 }
 
 // UserResponse is the public-facing representation of a user.
-// It excludes sensitive fields like password.
+// Excludes sensitive fields like password hashes.
 type UserResponse struct {
-	ID    string `json:"id"`
-	Email string `json:"email"`
-	Name  string `json:"name"`
-	Role  string `json:"role"`
+	ID        string    `json:"id"`
+	Email     string    `json:"email"`
+	Name      string    `json:"name"`
+	Role      string    `json:"role"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+// AuthResponse is returned upon successful authentication.
+type AuthResponse struct {
+	Token string       `json:"token"`
+	User  UserResponse `json:"user"`
 }

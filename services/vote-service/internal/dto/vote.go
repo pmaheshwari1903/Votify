@@ -1,29 +1,17 @@
 package dto
 
-// CastVoteRequest represents the data required to cast a vote.
+import "time"
+
+// CastVoteRequest represents the request payload to submit a vote.
 type CastVoteRequest struct {
-	PollID   string `json:"pollId" validate:"required"`
-	OptionID string `json:"optionId" validate:"required"`
+	PollID   string `json:"pollId" binding:"required"`
+	OptionID string `json:"optionId" binding:"required"`
 }
 
-// VoteResponse is the public confirmation of a cast vote.
+// VoteResponse is returned after a vote is successfully recorded.
 type VoteResponse struct {
-	ID        string `json:"id"`
-	PollID    string `json:"pollId"`
-	OptionID  string `json:"optionId"`
-	CreatedAt string `json:"createdAt"`
-}
-
-// TallyResponse contains the aggregated vote counts for a poll.
-type TallyResponse struct {
-	PollID  string              `json:"pollId"`
-	Results []OptionTallyResult `json:"results"`
-	Total   int64               `json:"total"`
-}
-
-// OptionTallyResult is the vote count for a single option.
-type OptionTallyResult struct {
-	OptionID string  `json:"optionId"`
-	Count    int64   `json:"count"`
-	Percent  float64 `json:"percent"`
+	ID        string    `json:"id"`
+	PollID    string    `json:"pollId"`
+	OptionID  string    `json:"optionId"`
+	CreatedAt time.Time `json:"createdAt"`
 }

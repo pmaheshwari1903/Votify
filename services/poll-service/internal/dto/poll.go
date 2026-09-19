@@ -1,34 +1,40 @@
 package dto
 
-// CreatePollRequest represents the data required to create a new poll.
-// Validation tags enforce structural constraints at the request boundary.
+import (
+	"time"
+
+	"github.com/votify/poll-service/internal/model"
+)
+
+// CreatePollRequest represents request data to create a new poll.
 type CreatePollRequest struct {
-	Title       string   `json:"title" validate:"required,min=3,max=200"`
-	Description string   `json:"description,omitempty" validate:"max=1000"`
-	Options     []string `json:"options" validate:"required,min=2,max=10,dive,required,min=1,max=200"`
+	Question    string   `json:"question" binding:"required,min=5,max=300"`
+	Description string   `json:"description,omitempty" binding:"max=1000"`
+	Options     []string `json:"options" binding:"required,min=2,max=10"`
 }
 
-// UpdatePollRequest represents the data for updating an existing poll.
+// UpdatePollRequest represents request data to edit an existing poll.
 type UpdatePollRequest struct {
-	Title       *string  `json:"title,omitempty" validate:"omitempty,min=3,max=200"`
-	Description *string  `json:"description,omitempty" validate:"omitempty,max=1000"`
-	Options     []string `json:"options,omitempty" validate:"omitempty,min=2,max=10,dive,required,min=1,max=200"`
+	Question    string `json:"question,omitempty" binding:"omitempty,min=5,max=300"`
+	Description string `json:"description,omitempty" binding:"omitempty,max=1000"`
 }
 
-// PollResponse is the public-facing representation of a poll.
-type PollResponse struct {
-	ID          string           `json:"id"`
-	Title       string           `json:"title"`
-	Description string           `json:"description,omitempty"`
-	Options     []OptionResponse `json:"options"`
-	CreatorID   string           `json:"creatorId"`
-	Status      string           `json:"status"`
-	ExpiresAt   *string          `json:"expiresAt,omitempty"`
-	CreatedAt   string           `json:"createdAt"`
+// PublicPollResponse represents sanitized data for public voting.
+// Excludes owner private data or administrative fields.
+type PublicPollResponse struct {
+	ID          string             `json:"id"`
+	Question    string             `json:"question"`
+	Description string             `json:"description,omitempty"`
+	Options     []model.PollOption `json:"options"`
+	Status      string             `json:"status"`
+	CreatedAt   time.Time          `json:"createdAt"`
 }
 
-// OptionResponse is the public-facing representation of a poll option.
-type OptionResponse struct {
-	ID   string `json:"id"`
-	Text string `json:"text"`
+// PollResultsResponse represents poll vote counts for display.
+type PollResultsResponse struct {
+	PollID     string             `json:"pollId"`
+	Question   string             `json:"question"`
+	Status     string             `json:"status"`
+	TotalVotes int                `json:"totalVotes"`
+	Options    []model.PollOption `json:"options"`
 }
