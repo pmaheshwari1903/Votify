@@ -13,6 +13,11 @@ build/
 # Go
 vendor/
 *.mod.bak
+go.work.sum
+api-gateway
+votify-backend
+
+
 
 # Node / Frontend
 node_modules/
