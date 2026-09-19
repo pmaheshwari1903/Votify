@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
@@ -11,7 +12,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 )
@@ -92,34 +92,45 @@ func ExchangeCodeForTokens(
 	redirectURI string,
 	codeVerifier string,
 ) (*TokenResponse, error) {
-	data := url.Values{}
-	data.Set("grant_type", "authorization_code")
-	data.Set("code", code)
-	data.Set("redirect_uri", redirectURI)
-	data.Set("client_id", clientID)
 
-	// Only send client_secret if it's a real value (not empty or a placeholder)
-	if clientSecret != "" && !strings.HasPrefix(clientSecret, "<") && clientSecret != "your-client-secret" {
-		data.Set("client_secret", clientSecret)
-	}
-	if codeVerifier != "" {
-		data.Set("code_verifier", codeVerifier)
+	payload := map[string]string{
+		"client_id":     clientID,
+		"client_secret": clientSecret,
+		"code":          code,
+		"redirect_uri":  redirectURI,
 	}
 
-	log.Printf("[OAuth] Token exchange: endpoint=%s client_id=%s redirect_uri=%s has_verifier=%t",
-		tokenEndpoint, clientID, redirectURI, codeVerifier != "")
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("encode token request failed: %w", err)
+	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenEndpoint, strings.NewReader(data.Encode()))
+	log.Printf(
+		"[OAuth] Token exchange: endpoint=%s client_id=%s redirect_uri=%s",
+		tokenEndpoint,
+		clientID,
+		redirectURI,
+	)
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		tokenEndpoint,
+		bytes.NewReader(body),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("create token request failed: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{Timeout: 10 * time.Second}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("token request failed: %w", err)
 	}
+
 	defer resp.Body.Close()
 
 	bodyBytes, err := io.ReadAll(resp.Body)
@@ -128,12 +139,21 @@ func ExchangeCodeForTokens(
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		// Log sanitized error (no tokens/secrets)
-		log.Printf("[OAuth] Token endpoint error: status=%d body=%s", resp.StatusCode, string(bodyBytes))
-		return nil, fmt.Errorf("token endpoint returned status %d: %s", resp.StatusCode, string(bodyBytes))
+		log.Printf(
+			"[OAuth] Token endpoint error: status=%d body=%s",
+			resp.StatusCode,
+			string(bodyBytes),
+		)
+
+		return nil, fmt.Errorf(
+			"token endpoint returned status %d: %s",
+			resp.StatusCode,
+			string(bodyBytes),
+		)
 	}
 
 	var tokenRes TokenResponse
+
 	if err := json.Unmarshal(bodyBytes, &tokenRes); err != nil {
 		return nil, fmt.Errorf("decode token response failed: %w", err)
 	}
