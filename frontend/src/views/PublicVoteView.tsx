@@ -1,16 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from '../components/ui/Button';
 import { apiClient } from '../lib/api';
-import type { Poll, PollOption } from '../types';
+import { ENV } from '../config/env';
+import type { Poll, PollOption, User } from '../types';
 
 interface PublicVoteViewProps {
   pollId: string;
+  user: User | null;
   onNavigateResults: (pollId: string) => void;
   onNavigateDashboard?: () => void;
 }
 
 export const PublicVoteView: React.FC<PublicVoteViewProps> = ({
   pollId,
+  user,
   onNavigateResults,
   onNavigateDashboard,
 }) => {
@@ -37,6 +40,36 @@ export const PublicVoteView: React.FC<PublicVoteViewProps> = ({
 
     loadPoll();
   }, [pollId]);
+
+  const handleSignIn = () => {
+    const loginUrl = `${ENV.API_BASE_URL}/auth/oauth/login?popup=true`;
+    const width = 500;
+    const height = 650;
+    const left = window.screen.width / 2 - width / 2;
+    const top = window.screen.height / 2 - height / 2;
+
+    const popup = window.open(
+      loginUrl,
+      'MaheshwariOIDCAuth',
+      `width=${width},height=${height},top=${top},left=${left},scrollbars=yes,status=yes`
+    );
+
+    if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+      window.location.href = loginUrl;
+      return;
+    }
+
+    const handleMessage = async (event: MessageEvent) => {
+      if (event.data?.type === 'OAUTH_SUCCESS') {
+        window.removeEventListener('message', handleMessage);
+        if (event.data.token) {
+          localStorage.setItem('votify_token', event.data.token);
+        }
+        window.location.reload();
+      }
+    };
+    window.addEventListener('message', handleMessage);
+  };
 
   const handleVote = async () => {
     if (!selectedOptionId || !poll) return;
@@ -186,6 +219,35 @@ export const PublicVoteView: React.FC<PublicVoteViewProps> = ({
           </div>
         ) : (
           <div>
+            {!user && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 14px',
+                backgroundColor: 'var(--v-color-washi-light)',
+                borderRadius: 'var(--v-radius-md)',
+                marginBottom: '20px',
+                fontSize: '13px',
+                color: 'var(--v-color-warm-gray)'
+              }}>
+                <span>Voting as a public guest.</span>
+                <button
+                  type="button"
+                  onClick={handleSignIn}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--v-color-vermilion)',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Optional: Sign in with Maheshwari.com
+                </button>
+              </div>
+            )}
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '28px' }}>
               {poll?.options.map((opt: PollOption) => {
                 const isSelected = selectedOptionId === opt.id;

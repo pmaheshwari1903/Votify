@@ -114,7 +114,7 @@ func main() {
 		v1.POST("/polls/:id/open", reqAuth, pollHandler.Open)
 		v1.POST("/polls/:id/close", reqAuth, pollHandler.Close)
 
-		// Vote routes
+		// Vote routes (OptionalAuth allows both authenticated users & public unauthenticated voters)
 		v1.POST("/votes", optAuth, voteHandler.CastVote)
 	}
 

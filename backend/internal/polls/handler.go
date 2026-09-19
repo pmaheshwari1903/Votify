@@ -15,10 +15,7 @@ func NewPollHandler(service PollService) *PollHandler {
 }
 
 func getUserID(c *gin.Context) string {
-	if uid := c.GetString("userID"); uid != "" {
-		return uid
-	}
-	return c.GetHeader("X-User-ID")
+	return c.GetString("userID")
 }
 
 func (h *PollHandler) Create(c *gin.Context) {

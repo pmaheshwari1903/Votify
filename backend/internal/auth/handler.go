@@ -54,9 +54,6 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 func (h *AuthHandler) Me(c *gin.Context) {
 	userID := c.GetString("userID")
-	if userID == "" {
-		userID = c.GetHeader("X-User-ID")
-	}
 
 	if userID == "" {
 		response.Unauthorized(c, "User context missing")
@@ -189,10 +186,10 @@ func (h *AuthHandler) OAuthCallback(c *gin.Context) {
   </div>
   <script>
     if (window.opener) {
-      window.opener.postMessage({ type: 'OAUTH_SUCCESS' }, '*');
+      window.opener.postMessage({ type: 'OAUTH_SUCCESS', token: '`+authRes.Token+`' }, '*');
       window.close();
     } else {
-      window.location.href = '`+strings.TrimRight(cfg.FrontendURL, "/")+`';
+      window.location.href = '`+strings.TrimRight(cfg.FrontendURL, "/")+`/?token=`+authRes.Token+`';
     }
   </script>
 </body>
@@ -200,7 +197,7 @@ func (h *AuthHandler) OAuthCallback(c *gin.Context) {
 		return
 	}
 
-	c.Redirect(http.StatusFound, strings.TrimRight(cfg.FrontendURL, "/"))
+	c.Redirect(http.StatusFound, strings.TrimRight(cfg.FrontendURL, "/")+"/?token="+authRes.Token)
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {

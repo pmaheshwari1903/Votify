@@ -25,29 +25,18 @@ export const LoginView: React.FC = () => {
 
       window.removeEventListener('message', handleMessage);
 
-      try {
-        // Confirm that the Votify authentication cookie is working.
-        const user = await apiClient.get<User>('/auth/me');
+      if (event.data.token) {
+        localStorage.setItem('votify_token', event.data.token);
+      }
 
+      try {
+        const user = await apiClient.get<User>('/auth/me');
         if (user) {
           window.location.reload();
         }
       } catch (error) {
-        console.error('OAuth succeeded but Votify session was not restored:', error);
-
-        // Retry once after a short delay in case the browser
-        // has not finished processing the Set-Cookie header yet.
-        setTimeout(async () => {
-          try {
-            const user = await apiClient.get<User>('/auth/me');
-
-            if (user) {
-              window.location.reload();
-            }
-          } catch (retryError) {
-            console.error('Authentication session retry failed:', retryError);
-          }
-        }, 500);
+        console.error('OAuth succeeded but Votify session fetch failed:', error);
+        window.location.reload();
       }
     };
 

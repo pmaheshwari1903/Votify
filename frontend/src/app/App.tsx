@@ -18,6 +18,15 @@ export const App: React.FC = () => {
   const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
+    // Check if token was passed in URL query param e.g. /?token=...
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlToken = urlParams.get('token');
+    if (urlToken) {
+      localStorage.setItem('votify_token', urlToken);
+      // Clean query param from browser address bar
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
     // Check URL pathname for direct links e.g. /poll/:id or /poll/:id/results
     const path = window.location.pathname;
     if (path.startsWith('/poll/')) {
@@ -42,6 +51,7 @@ export const App: React.FC = () => {
   }, []);
 
   const handleLogout = () => {
+    localStorage.removeItem('votify_token');
     apiClient.post('/auth/logout').catch(() => {});
     setUser(null);
     setView('login');
@@ -131,6 +141,7 @@ export const App: React.FC = () => {
         {view === 'public-vote' && (
           <PublicVoteView
             pollId={activePollId}
+            user={user}
             onNavigateResults={navigateToResults}
             onNavigateDashboard={navigateToDashboard}
           />

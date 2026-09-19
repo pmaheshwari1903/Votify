@@ -1,7 +1,11 @@
 package votes
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/votify/backend/internal/config"
 	"github.com/votify/backend/internal/errors"
 	"github.com/votify/backend/internal/response"
 )
@@ -16,11 +20,24 @@ func NewVoteHandler(service VoteService) *VoteHandler {
 
 func (h *VoteHandler) CastVote(c *gin.Context) {
 	userID := c.GetString("userID")
-	if userID == "" {
-		userID = c.GetHeader("X-User-ID")
-	}
 
 	clientIP := c.ClientIP()
+	anonVoterID, _ := c.Cookie("votify_anonymous_voter_id")
+
+	// If unauthenticated public user and no voter cookie present, issue a new HttpOnly anonymous voter ID cookie
+	if userID == "" && anonVoterID == "" {
+		anonVoterID = "anon_voter_" + uuid.New().String()
+		cfg := config.Load()
+		isSecure := cfg.Env == "production"
+
+		if isSecure {
+			c.SetSameSite(http.SameSiteNoneMode)
+		} else {
+			c.SetSameSite(http.SameSiteLaxMode)
+		}
+
+		c.SetCookie("votify_anonymous_voter_id", anonVoterID, 31536000, "/", "", isSecure, true)
+	}
 
 	var req CastVoteRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -28,7 +45,7 @@ func (h *VoteHandler) CastVote(c *gin.Context) {
 		return
 	}
 
-	res, err := h.service.CastVote(c.Request.Context(), userID, clientIP, req)
+	res, err := h.service.CastVote(c.Request.Context(), userID, anonVoterID, clientIP, req)
 	if err != nil {
 		errors.RespondWithError(c, err)
 		return

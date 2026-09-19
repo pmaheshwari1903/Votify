@@ -31,8 +31,8 @@ func TestCastVoteAndDuplicateProtection(t *testing.T) {
 
 	optID := poll.Options[0].ID
 
-	// Cast Vote
-	res, err := voteSvc.CastVote(ctx, "voter_1", "127.0.0.1", votes.CastVoteRequest{
+	// Cast Vote from authenticated user
+	res, err := voteSvc.CastVote(ctx, "voter_1", "", "127.0.0.1", votes.CastVoteRequest{
 		PollID:   poll.ID,
 		OptionID: optID,
 	})
@@ -49,12 +49,34 @@ func TestCastVoteAndDuplicateProtection(t *testing.T) {
 		t.Fatalf("Expected total votes 1, got %d", pResults.TotalVotes)
 	}
 
-	// Duplicate Vote from same user -> should fail
-	_, err = voteSvc.CastVote(ctx, "voter_1", "127.0.0.1", votes.CastVoteRequest{
+	// Duplicate Vote from same authenticated user -> should fail
+	_, err = voteSvc.CastVote(ctx, "voter_1", "", "127.0.0.1", votes.CastVoteRequest{
 		PollID:   poll.ID,
 		OptionID: optID,
 	})
 	if err == nil {
 		t.Fatalf("Expected duplicate vote to be rejected")
+	}
+
+	// Cast Vote from unauthenticated public user (using anonymous voter ID cookie)
+	opt2ID := poll.Options[1].ID
+	resAnon, err := voteSvc.CastVote(ctx, "", "anon_voter_123", "192.168.1.50", votes.CastVoteRequest{
+		PollID:   poll.ID,
+		OptionID: opt2ID,
+	})
+	if err != nil {
+		t.Fatalf("Anonymous CastVote failed: %v", err)
+	}
+	if resAnon.PollID != poll.ID || resAnon.OptionID != opt2ID {
+		t.Fatalf("Anonymous CastVote returned unexpected response: %+v", resAnon)
+	}
+
+	// Duplicate Vote from same anonymous voter cookie -> should fail
+	_, err = voteSvc.CastVote(ctx, "", "anon_voter_123", "192.168.1.50", votes.CastVoteRequest{
+		PollID:   poll.ID,
+		OptionID: opt2ID,
+	})
+	if err == nil {
+		t.Fatalf("Expected duplicate anonymous vote to be rejected")
 	}
 }

@@ -2,6 +2,8 @@ package votes
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"strings"
 	"time"
@@ -17,7 +19,7 @@ type VoteRepo interface {
 }
 
 type VoteService interface {
-	CastVote(ctx context.Context, userID, clientIP string, req CastVoteRequest) (*VoteResponse, error)
+	CastVote(ctx context.Context, userID, anonVoterID, clientIP string, req CastVoteRequest) (*VoteResponse, error)
 }
 
 type DefaultVoteService struct {
@@ -40,7 +42,7 @@ func NewVoteService(
 
 func (s *DefaultVoteService) CastVote(
 	ctx context.Context,
-	userID, clientIP string,
+	userID, anonVoterID, clientIP string,
 	req CastVoteRequest,
 ) (*VoteResponse, error) {
 	pollID := strings.TrimSpace(req.PollID)
@@ -73,7 +75,12 @@ func (s *DefaultVoteService) CastVote(
 
 	voterIdentity := userID
 	if voterIdentity == "" {
-		voterIdentity = "ip_" + clientIP
+		if anonVoterID != "" {
+			voterIdentity = anonVoterID
+		} else {
+			h := sha256.Sum256([]byte(clientIP))
+			voterIdentity = "anon_ip_" + hex.EncodeToString(h[:12])
+		}
 	}
 
 	alreadyVoted, err := s.voteRepo.HasVoted(ctx, pollID, voterIdentity)
