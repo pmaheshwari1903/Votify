@@ -24,7 +24,7 @@ type Config struct {
 func Load() *Config {
 	return &Config{
 		Env:                 getEnv("APP_ENV", "development"),
-		Port:                getEnv("API_GATEWAY_PORT", "8080"),
+		Port:                getEnv("PORT", getEnv("API_GATEWAY_PORT", "8080")),
 		JWTSecret:           getEnv("JWT_SECRET", "your-jwt-secret-min-32-chars"),
 		AuthServiceURL:      getEnv("AUTH_SERVICE_URL", "http://localhost:8081"),
 		PollServiceURL:      getEnv("POLL_SERVICE_URL", "http://localhost:8082"),
