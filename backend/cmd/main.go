@@ -34,12 +34,15 @@ func main() {
 	var voteRepo repository.VoteRepository
 
 	if cfg.MongoURI != "" {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		client, err := mongo.Connect(ctx, options.Client().ApplyURI(cfg.MongoURI))
+		if err == nil {
+			err = client.Ping(ctx, nil)
+		}
 		cancel()
 
 		if err == nil {
-			log.Println("[Database] Connected to MongoDB at", cfg.MongoURI)
+			log.Println("[Database] Connected and pinged MongoDB successfully")
 			authDB := client.Database(cfg.AuthMongoDB)
 			pollDB := client.Database(cfg.PollMongoDB)
 			voteDB := client.Database(cfg.VoteMongoDB)
@@ -48,7 +51,7 @@ func main() {
 			pollRepo = repository.NewMongoPollRepository(pollDB)
 			voteRepo = repository.NewMongoVoteRepository(voteDB)
 		} else {
-			log.Printf("[Database] Failed to connect to MongoDB (%v), falling back to in-memory store", err)
+			log.Printf("[Database] Failed to connect/ping MongoDB (%v), falling back to in-memory store", err)
 		}
 	}
 
