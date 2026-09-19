@@ -11,6 +11,9 @@ type Config struct {
 	MongoURI string
 	MongoDB  string
 
+	// Poll Service URL for poll validation
+	PollServiceURL string
+
 	// Kafka (for publishing VoteCreated events)
 	KafkaBrokers string
 }
@@ -18,11 +21,12 @@ type Config struct {
 // Load reads configuration from environment variables.
 func Load() *Config {
 	return &Config{
-		Env:          getEnv("APP_ENV", "development"),
-		Port:         getEnv("VOTE_SERVICE_PORT", "8083"),
-		MongoURI:     getEnv("VOTE_MONGO_URI", "mongodb://localhost:27017"),
-		MongoDB:      getEnv("VOTE_MONGO_DB", "votify_votes"),
-		KafkaBrokers: getEnv("KAFKA_BROKERS", "localhost:9092"),
+		Env:            getEnv("APP_ENV", "development"),
+		Port:           getEnv("VOTE_SERVICE_PORT", "8083"),
+		MongoURI:       getEnv("VOTE_MONGO_URI", "mongodb://localhost:27017"),
+		MongoDB:        getEnv("VOTE_MONGO_DB", "votify_votes"),
+		PollServiceURL: getEnv("POLL_SERVICE_URL", "http://localhost:8082"),
+		KafkaBrokers:   getEnv("KAFKA_BROKERS", "localhost:9092"),
 	}
 }
 
