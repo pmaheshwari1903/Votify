@@ -33,16 +33,16 @@ export const App: React.FC = () => {
       }
     }
 
-    // Check auth via HttpOnly cookie (sent automatically with credentials)
-    apiClient
-      .get<User>('/auth/me')
-      .then((u) => {
-        setUser(u);
-      })
-      .catch(() => {
-        // Not authenticated — cookie missing or expired
-      })
-      .finally(() => setInitializing(false));
+    // TEMPORARY: Bypass auth — mock user to go straight to dashboard
+    setUser({ id: 'temp-user', name: 'Dev User', email: 'dev@votify.app', role: 'user', createdAt: new Date().toISOString() });
+    setInitializing(false);
+
+    // TODO: Restore real auth check
+    // apiClient
+    //   .get<User>('/auth/me')
+    //   .then((u) => setUser(u))
+    //   .catch(() => {})
+    //   .finally(() => setInitializing(false));
   }, []);
 
   const handleLogout = () => {
