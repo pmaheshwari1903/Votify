@@ -7,7 +7,6 @@ import (
 
 	"github.com/votify/pkg/events"
 	"github.com/votify/pkg/logging"
-	voteBroker "github.com/votify/vote-service/internal/broker"
 	"github.com/votify/realtime-service/internal/pubsub"
 )
 
@@ -28,9 +27,6 @@ func NewKafkaConsumer(groupID string, redisStore *pubsub.RedisRealtimeStore, log
 	}
 
 	// Subscribe to internal EventBus for immediate local event consumption
-	voteBroker.DefaultEventBus.Subscribe(func(evt events.Event) {
-		consumer.ProcessEvent(context.Background(), evt)
-	})
 
 	return consumer
 }

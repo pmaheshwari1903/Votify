@@ -10,10 +10,9 @@ import (
 
 	"github.com/votify/pkg/errors"
 	"github.com/votify/pkg/events"
-	pollDto "github.com/votify/poll-service/internal/dto"
-	pollRoutes "github.com/votify/poll-service/internal/routes"
 	"github.com/votify/vote-service/internal/broker"
 	voteDto "github.com/votify/vote-service/internal/dto"
+	pollDto "github.com/votify/vote-service/internal/dto/poll"
 	"github.com/votify/vote-service/internal/model"
 	"github.com/votify/vote-service/internal/repository"
 )
@@ -55,13 +54,13 @@ func (s *DefaultVoteService) CastVote(
 		)
 	}
 
-	// 1. Fetch Poll state authoritatively
+	// 1. Fetch Poll state authoritatively from Poll Service.
 	pubPoll, err := s.fetchPollState(ctx, pollID)
 	if err != nil {
 		return nil, err
 	}
 
-	// 2. Verify Poll status is OPEN
+	// 2. Verify Poll status is OPEN.
 	if pubPoll.Status != "open" {
 		return nil, errors.NewConflictError(
 			"This poll is closed for voting",
@@ -69,7 +68,7 @@ func (s *DefaultVoteService) CastVote(
 		)
 	}
 
-	// 3. Verify option belongs to this poll
+	// 3. Verify option belongs to this poll.
 	optionValid := false
 	for _, opt := range pubPoll.Options {
 		if opt.ID == optionID {
@@ -89,13 +88,13 @@ func (s *DefaultVoteService) CastVote(
 		)
 	}
 
-	// 4. Determine voter identity for duplicate protection
+	// 4. Determine voter identity for duplicate protection.
 	voterIdentity := userID
 	if voterIdentity == "" {
 		voterIdentity = "ip_" + clientIP
 	}
 
-	// 5. Check duplicate vote
+	// 5. Check duplicate vote.
 	alreadyVoted, err := s.repo.HasVoted(ctx, pollID, voterIdentity)
 	if err != nil {
 		return nil, errors.NewInternalError(err)
@@ -108,7 +107,7 @@ func (s *DefaultVoteService) CastVote(
 		)
 	}
 
-	// 6. Record vote in Vote Repository
+	// 6. Record vote in Vote Repository.
 	vote := &model.Vote{
 		PollID:        pollID,
 		OptionID:      optionID,
@@ -128,10 +127,10 @@ func (s *DefaultVoteService) CastVote(
 		return nil, errors.NewInternalError(err)
 	}
 
-	// 7. Increment vote count in Poll Service
+	// 7. Increment vote count through Poll Service API.
 	s.incrementPollVote(ctx, pollID, optionID)
 
-	// 8. Publish VoteCreated event to Kafka AFTER successful database persistence
+	// 8. Publish VoteCreated event to Kafka after successful persistence.
 	if s.producer != nil {
 		_ = s.producer.PublishVoteCreated(
 			ctx,
@@ -157,23 +156,8 @@ func (s *DefaultVoteService) fetchPollState(
 	ctx context.Context,
 	pollID string,
 ) (*pollDto.PublicPollResponse, error) {
-	// Attempt shared memory repo lookup first
-	sharedPollRepo := pollRoutes.GetSharedPollRepository()
 
-	p, _ := sharedPollRepo.FindByID(ctx, pollID)
-
-	if p != nil {
-		return &pollDto.PublicPollResponse{
-			ID:          p.ID,
-			Question:    p.Question,
-			Description: p.Description,
-			Options:     p.Options,
-			Status:      p.Status,
-			CreatedAt:   p.CreatedAt,
-		}, nil
-	}
-
-	// Fallback to HTTP request to Poll Service
+	// Poll Service is the authoritative owner of poll state.
 	url := fmt.Sprintf(
 		"%s/polls/public/%s",
 		s.pollServiceURL,
@@ -192,19 +176,26 @@ func (s *DefaultVoteService) fetchPollState(
 	}
 
 	resp, err := http.DefaultClient.Do(req)
-
-	if err != nil || resp.StatusCode != http.StatusOK {
+	if err != nil {
 		return nil, errors.NewNotFoundError("Poll", pollID)
 	}
 
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.NewNotFoundError("Poll", pollID)
+	}
+
 	var apiResp struct {
-		Success bool                     `json:"success"`
+		Success bool                       `json:"success"`
 		Data    pollDto.PublicPollResponse `json:"data"`
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil || !apiResp.Success {
+	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+		return nil, errors.NewNotFoundError("Poll", pollID)
+	}
+
+	if !apiResp.Success {
 		return nil, errors.NewNotFoundError("Poll", pollID)
 	}
 
@@ -215,15 +206,7 @@ func (s *DefaultVoteService) incrementPollVote(
 	ctx context.Context,
 	pollID, optionID string,
 ) {
-	sharedPollRepo := pollRoutes.GetSharedPollRepository()
-
-	_ = sharedPollRepo.IncrementVote(
-		ctx,
-		pollID,
-		optionID,
-	)
-
-	// Fire HTTP increment attempt
+	// Ask Poll Service to update its authoritative poll state.
 	url := fmt.Sprintf(
 		"%s/internal/polls/%s/options/%s/vote",
 		s.pollServiceURL,
@@ -238,11 +221,12 @@ func (s *DefaultVoteService) incrementPollVote(
 		nil,
 	)
 
-	if err == nil {
-		resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return
+	}
 
-		if err == nil && resp != nil {
-			resp.Body.Close()
-		}
+	resp, err := http.DefaultClient.Do(req)
+	if err == nil && resp != nil {
+		resp.Body.Close()
 	}
 }

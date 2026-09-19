@@ -15,8 +15,18 @@ import (
 func Register(router *gin.Engine, cfg *config.Config) {
 	logger := logging.NewLogger("realtime-service", cfg.Env, "info")
 
-	redisStore := pubsub.NewRedisRealtimeStore(cfg.RedisAddr, cfg.RedisPassword)
-	_ = broker.NewKafkaConsumer("votify-realtime-service", redisStore, logger)
+	redisStore := pubsub.NewRedisRealtimeStore(
+		cfg.RedisAddr,
+		cfg.RedisPassword,
+		cfg.PollServiceURL,
+	)
+
+	_ = broker.NewKafkaConsumer(
+		"votify-realtime-service",
+		redisStore,
+		logger,
+	)
+
 	connManager := websocket.NewConnectionManager(redisStore, logger)
 
 	h := handler.NewRealtimeHandler(connManager, redisStore)
