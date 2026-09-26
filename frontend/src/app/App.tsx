@@ -102,6 +102,7 @@ export const App: React.FC = () => {
                 <Button variant="outline" size="sm" onClick={navigateToDashboard}>
                   Dashboard
                 </Button>
+                <h2>Hello Everyone</h2>
                 <Button variant="ghost" size="sm" onClick={handleLogout}>
                   Logout
                 </Button>
